@@ -1,36 +1,35 @@
-name: Create Archive
+name: Create Release with Zipped JS Files
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    
     steps:
-      - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+    - name: Zip extension files
+      run: |
+        find . \( -name "*.js" -o -name "*.html" -o -name "*.png" -o -name "manifest.json" \) \
+          ! -path "./.github/*" \
+          ! -path "./promo/*" \
+          -type f \
+          -print0 | xargs -0 zip extension_files.zip
 
-      - uses: actions/create-release@v1
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: "v1.0.0"
-          release_name: "My Release"
-          draft: true
-          prerelease: false
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
 
-      - uses: ksm2/archive-action@v1
-        id: archive
-        with:
-          format: "zip"
-          name: my-bundle
-          include: "**/*.(ts|js|css|html)"
-
-      - uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.archive.outputs.path }}
-          asset_name: ${{ steps.archive.outputs.name }}
-          asset_content_type: ${{ steps.archive.outputs.media-type }}
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./js_files.zip
+        asset_name: js_files.zip
+        asset_content_type: application/zip
